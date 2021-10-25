@@ -115,8 +115,8 @@ function usePolkadot() {
   React.useEffect(() => {
     InteractionManager.runAfterInteractions(() => {
       const provider = new WsProvider(
-        // 'wss://rpc.polkadot.io',
-        'wss://staging.registrar.litentry.io',
+        'wss://rpc.polkadot.io',
+        // 'wss://staging.registrar.litentry.io',
         false,
       );
       // const provider = new WsProvider('ws://a07dc0705c70.ngrok.io', false);
