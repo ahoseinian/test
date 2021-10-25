@@ -1,12 +1,4 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow strict-local
- */
-
-import React, {Node} from 'react';
+import React, {useRef} from 'react';
 import {WsProvider, ApiPromise} from '@polkadot/api';
 import {
   SafeAreaView,
@@ -15,46 +7,25 @@ import {
   StyleSheet,
   Text,
   useColorScheme,
+  Button,
+  InteractionManager,
   View,
 } from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+import {Colors} from 'react-native/Libraries/NewAppScreen';
 
-const Section = ({children, title}): Node => {
+const App = () => {
+  // useWs();
+  const getTips = usePolkadot();
   const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-};
 
-const App: () => Node = () => {
-  usePolkadot();
-  const isDarkMode = useColorScheme() === 'dark';
+  const [number, setNumber] = React.useState(0);
+
+  React.useEffect(() => {
+    setTimeout(() => {
+      setNumber(number => number + 1);
+    }, 400);
+  }, [number]);
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
@@ -66,26 +37,10 @@ const App: () => Node = () => {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.js</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
+        <Text>{number}</Text>
+        <Button onPress={() => setNumber(number + 100)} title="Increment" />
+        <View style={styles.gap} />
+        <Button onPress={getTips} title="GET TIPS" />
       </ScrollView>
     </SafeAreaView>
   );
@@ -95,6 +50,9 @@ const styles = StyleSheet.create({
   sectionContainer: {
     marginTop: 32,
     paddingHorizontal: 24,
+  },
+  gap: {
+    height: 20,
   },
   sectionTitle: {
     fontSize: 24,
@@ -112,32 +70,92 @@ const styles = StyleSheet.create({
 
 export default App;
 
-function usePolkadot() {
+function logger(...msg) {
+  console.log(
+    `${new Date().toLocaleTimeString()}: ${msg
+      .map(m => JSON.stringify(m))
+      .join(' ')}`,
+  );
+}
+
+function useWs() {
   React.useEffect(() => {
-    const provider = new WsProvider('wss://rpc.polkadot.io', false);
-    const promise = new ApiPromise({provider});
-    promise.connect().then(() => {
-      console.log('Connected to polkadot');
-    });
+    const ws = new WebSocket('wss://rpc.polkadot.io');
+    // const ws = new WebSocket('ws://a07dc0705c70.ngrok.io');
+    ws.onopen = () => {
+      logger('open WS');
+      ws.send(
+        JSON.stringify({
+          id: 6,
+          jsonrpc: '2.0',
+          method: 'state_getMetadata',
+          params: [],
+        }),
+      );
+    };
+    ws.onmessage = event => {
+      logger('message', event);
+      logger(event.data);
+    };
+    ws.onclose = () => {
+      logger('close WS');
+    };
+    ws.onerror = event => {
+      logger('error WS', event);
+    };
 
-    promise.on('ready', () => {
-      console.log('Polkadot is ready');
-      promise.query.tips.tips
-        .keys()
-        .then(keys => keys.map(key => key.args[0].toHex()))
-        .then(console.log);
-    });
+    return () => {
+      ws.close();
+    };
+  }, []);
+}
 
-    promise.on('disconnected', () => {
-      console.log('Polkadot is disconnected');
-    });
+function usePolkadot() {
+  let promise = useRef(null);
+  React.useEffect(() => {
+    InteractionManager.runAfterInteractions(() => {
+      const provider = new WsProvider(
+        // 'wss://rpc.polkadot.io',
+        'wss://staging.registrar.litentry.io',
+        false,
+      );
+      // const provider = new WsProvider('ws://a07dc0705c70.ngrok.io', false);
+      promise.current = new ApiPromise({provider});
+      promise.current.connect().then(() => {
+        logger('Connected to polkadot');
+      });
 
-    promise.on('error', error => {
-      console.log('Polkadot error', error);
-    });
+      promise.current.on('ready', () => {
+        logger(
+          '======================================================================Polkadot is ready',
+        );
+        logger(
+          '======================================================================Polkadot is ready',
+        );
+        logger(
+          '======================================================================Polkadot is ready',
+        );
+        promise.current.query.tips.tips
+          .keys()
+          .then(keys => keys.map(key => key.args[0].toHex()))
+          .then(console.log);
+      });
 
-    promise.on('connected', () => {
-      console.log('Polkadot is connected');
+      promise.current.on('disconnected', () => {
+        console.log('Polkadot is disconnected');
+      });
+
+      promise.current.on('error', error => {
+        console.log('Polkadot error', error);
+      });
+
+      promise.current.on('connected', () => {
+        console.log('Polkadot is connected');
+      });
     });
   }, []);
+
+  return () => {
+    promise.current.query.tips.tips.keys().then(console.log);
+  };
 }
